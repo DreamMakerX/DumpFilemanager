@@ -13,8 +13,7 @@
 #include <afx.h>
 #include <string>
 
-enum DumpFileType 
-{
+enum DumpFileType{
 	DumpFileType_Full = 0,	//full memory
 	DumpFileType_Normal,	//normal memory
 	DumpFileType_None,		//do not save
@@ -22,8 +21,7 @@ enum DumpFileType
 
 extern void StartDetectCrash(size_t type = DumpFileType_Full);
 
-class DumpFileManager
-{
+class DumpFileManager{
 public:
 	void SetDumpFileType(size_t type) { dumpFileType_ = type; }
 

@@ -11,24 +11,20 @@
 
 DumpFileManager& _manager = DumpFileManager::getInstance();
 
-void StartDetectCrash(size_t type)
-{
+void StartDetectCrash(size_t type) {
 	_manager.SetDumpFileType(type);
 	_manager.RunCrashHandler();
 }
 
-DumpFileManager::DumpFileManager() : dumpFileType_(DumpFileType_Full)
-{
+DumpFileManager::DumpFileManager() : dumpFileType_(DumpFileType_Full) {
 
 }
 
-DumpFileManager::~DumpFileManager()
-{
+DumpFileManager::~DumpFileManager() {
 
 }
 
-void DumpFileManager::RunCrashHandler()
-{
+void DumpFileManager::RunCrashHandler() {
 	if (!dumpFileName_.IsEmpty()) {// The automatic crash detection function has been activated
 		return;
 	}
@@ -37,11 +33,9 @@ void DumpFileManager::RunCrashHandler()
 	TCHAR temp[MAX_PATH] = { 0 };
 	TCHAR appPath[MAX_PATH] = { 0 };
 
-	if (GetModuleFileName(NULL, temp, MAX_PATH) > 0)
-	{
+	if (GetModuleFileName(NULL, temp, MAX_PATH) > 0) {
 		path = temp;
-		if ((pos = path.ReverseFind('\\')) > 0)
-		{
+		if ((pos = path.ReverseFind('\\')) > 0) {
 			_tcscpy_s(appPath, path.Left(pos + 1));
 		}
 	}
@@ -51,8 +45,7 @@ void DumpFileManager::RunCrashHandler()
 	// dump file path ==> DumpFile subfolders in the path where the application is located
 	dumpFilePath_ += _T("DumpFile\\");
 
-	if (!PathFileExists(dumpFilePath_))
-	{
+	if (!PathFileExists(dumpFilePath_)) {
 		CreateDirectory(dumpFilePath_, NULL);
 	}
 
@@ -66,11 +59,9 @@ void DumpFileManager::RunCrashHandler()
 	DisableSetUnhandledExceptionFilter();
 }
 
-void DumpFileManager::DisableSetUnhandledExceptionFilter()
-{
+void DumpFileManager::DisableSetUnhandledExceptionFilter() {
 	void* addr = (void*)GetProcAddress(LoadLibrary(_T("kernel32.dll")), "SetUnhandledExceptionFilter");
-	if (addr)
-	{
+	if (addr) {
 		unsigned char code[16];
 		int size = 0;
 		code[size++] = 0x33;
@@ -86,12 +77,10 @@ void DumpFileManager::DisableSetUnhandledExceptionFilter()
 	}
 }
 
-long WINAPI DumpFileManager::UnhandledExceptionFilterEx(struct _EXCEPTION_POINTERS* exception)
-{
+long WINAPI DumpFileManager::UnhandledExceptionFilterEx(struct _EXCEPTION_POINTERS* exception) {
 	BOOL bRetVal = FALSE;
 
-	if (!exception)
-	{
+	if (!exception) {
 		return EXCEPTION_CONTINUE_SEARCH;
 	}
 	_manager.CheckDumpFileNumber(_manager.dumpFilePath_);
@@ -106,8 +95,7 @@ void DumpFileManager::PrintDumplog(const char* patch, const char* msg)
 
 	FILE* fp;
 	fopen_s(&fp, logFileName.c_str(), "ab+");
-	if (NULL == fp)
-	{
+	if (NULL == fp) {
 		return;
 	}
 
@@ -122,16 +110,14 @@ void DumpFileManager::PrintDumplog(const char* patch, const char* msg)
 
 }
 
-void DumpFileManager::CheckDumpFileNumber(CString filePath)
-{
+void DumpFileManager::CheckDumpFileNumber(CString filePath) {
 	std::vector<CString> allFiles;
 	std::map<CTime, CString> fileTimeMap;
 	CString path = filePath;
 	filePath += "*.dmp*";
 	CFileFind finder;
 	BOOL noEmpty = finder.FindFile(filePath);
-	while (noEmpty)
-	{
+	while (noEmpty) {
 		noEmpty = finder.FindNextFile();
 		CString path = finder.GetFileName();
 		if (finder.IsDots()) continue;
@@ -141,8 +127,7 @@ void DumpFileManager::CheckDumpFileNumber(CString filePath)
 	}
 
 	std::vector<CString>::iterator it_file = allFiles.begin();
-	for (; it_file != allFiles.end(); it_file++)
-	{
+	for (; it_file != allFiles.end(); it_file++) {
 		path = *it_file;
 
 		CFileStatus FileStatus;
@@ -151,24 +136,20 @@ void DumpFileManager::CheckDumpFileNumber(CString filePath)
 	}
 
 	int	dumpCount = 5;// FullMemory ==> Up to 5 dump files can be stored
-	if (DumpFileType_Normal == dumpFileType_)
-	{
+	if (DumpFileType_Normal == dumpFileType_) {
 		dumpCount = 50;// NormalMemory ==> Up to 50 dump files can be stored
 	}
 
 	int fileCount = fileTimeMap.size();
-	if (fileCount > dumpCount)
-	{
+	if (fileCount > dumpCount) {
 		std::map<CTime, CString>::iterator itmap = fileTimeMap.begin();
-		for (; itmap != fileTimeMap.end() && fileCount > dumpCount; itmap++, fileCount--)
-		{
+		for (; itmap != fileTimeMap.end() && fileCount > dumpCount; itmap++, fileCount--) {
 			DeleteFile(itmap->second);
 		}
 	}
 }
 
-bool DumpFileManager::CreateDumpFile(EXCEPTION_POINTERS* exception, LPCTSTR fileName)
-{
+bool DumpFileManager::CreateDumpFile(EXCEPTION_POINTERS* exception, LPCTSTR fileName) {
 	DWORD handleCount;
 	GetProcessHandleCount(GetCurrentProcess(), &handleCount);
 	PROCESS_MEMORY_COUNTERS pmc;
@@ -185,24 +166,20 @@ bool DumpFileManager::CreateDumpFile(EXCEPTION_POINTERS* exception, LPCTSTR file
 	MINIDUMP_EXCEPTION_INFORMATION mdei;
 	HANDLE file = nullptr;
 
-	if (!exception || !fileName)
-	{
+	if (!exception || !fileName) {
 		return false;
 	}
 	file = CreateFile(fileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
-	if (file && file != INVALID_HANDLE_VALUE)
-	{
+	if (file && file != INVALID_HANDLE_VALUE) {
 		mdei.ThreadId = GetCurrentThreadId();
 		mdei.ExceptionPointers = exception;
 		mdei.ClientPointers = FALSE;
 
-		if (DumpFileType_Full == dumpFileType_)
-		{
+		if (DumpFileType_Full == dumpFileType_) {
 			MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), file, MiniDumpWithFullMemory, &mdei, NULL, NULL);
 		}
-		else
-		{
+		else {
 			MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), file, MiniDumpNormal, &mdei, NULL, NULL);
 		}
 
@@ -213,8 +190,7 @@ bool DumpFileManager::CreateDumpFile(EXCEPTION_POINTERS* exception, LPCTSTR file
 	return false;
 }
 
-std::string DumpFileManager::CString2String(CString target)
-{
+std::string DumpFileManager::CString2String(CString target) {
 #ifdef _UNICODE		
 	USES_CONVERSION;
 	std::string result(W2A(target));
@@ -226,8 +202,7 @@ std::string DumpFileManager::CString2String(CString target)
 #endif	
 }
 
-CString DumpFileManager::String2CString(const char* target)
-{
+CString DumpFileManager::String2CString(const char* target) {
 #ifdef _UNICODE		
 	CString result;
 	int num = MultiByteToWideChar(0, 0, target, -1, NULL, 0);
