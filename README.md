@@ -1,4 +1,4 @@
-# DumpFilemanager
+# DumpFileManager
 Winodws C++ automatically intercept and generate crash files without the need for Windbg
 
 ## There are two ways to use it:
