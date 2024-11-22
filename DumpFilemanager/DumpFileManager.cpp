@@ -11,9 +11,9 @@
 
 DumpFileManager& _manager = DumpFileManager::getInstance();
 
-void StartDetectCrash(size_t type) {
-	_manager.SetDumpFileType(type);
-	_manager.RunCrashHandler();
+void startDetectCrash(size_t type) {
+	_manager.setDumpFileType(type);
+	_manager.runCrashHandler();
 }
 
 DumpFileManager::DumpFileManager() : dumpFileType_(DumpFileType_Full) {
@@ -24,7 +24,7 @@ DumpFileManager::~DumpFileManager() {
 
 }
 
-void DumpFileManager::RunCrashHandler() {
+void DumpFileManager::runCrashHandler() {
 	if (!dumpFileName_.IsEmpty()) {// The automatic crash detection function has been activated
 		return;
 	}
@@ -55,11 +55,11 @@ void DumpFileManager::RunCrashHandler() {
 	dumpFileName_.Format(_T("%s%04d-%02d-%02d %02d-%02d-%02d.%03d.dmp"), dumpFilePath_, syt.wYear,
 		syt.wMonth, syt.wDay, syt.wHour, syt.wMinute, syt.wSecond, syt.wMilliseconds);
 
-	SetUnhandledExceptionFilter(UnhandledExceptionFilterEx);
-	DisableSetUnhandledExceptionFilter();
+	SetUnhandledExceptionFilter(unhandledExceptionFilterEx);
+	disableSetUnhandledExceptionFilter();
 }
 
-void DumpFileManager::DisableSetUnhandledExceptionFilter() {
+void DumpFileManager::disableSetUnhandledExceptionFilter() {
 	void* addr = (void*)GetProcAddress(LoadLibrary(_T("kernel32.dll")), "SetUnhandledExceptionFilter");
 	if (addr) {
 		unsigned char code[16];
@@ -77,21 +77,21 @@ void DumpFileManager::DisableSetUnhandledExceptionFilter() {
 	}
 }
 
-long WINAPI DumpFileManager::UnhandledExceptionFilterEx(struct _EXCEPTION_POINTERS* exception) {
+long WINAPI DumpFileManager::unhandledExceptionFilterEx(struct _EXCEPTION_POINTERS* exception) {
 	BOOL bRetVal = FALSE;
 
 	if (!exception) {
 		return EXCEPTION_CONTINUE_SEARCH;
 	}
-	_manager.CheckDumpFileNumber(_manager.dumpFilePath_);
-	_manager.CreateDumpFile(exception, _manager.dumpFileName_);
+	_manager.checkDumpFileNumber(_manager.dumpFilePath_);
+	_manager.createDumpFile(exception, _manager.dumpFileName_);
 	TerminateProcess(GetCurrentProcess(), 0);
 	return EXCEPTION_CONTINUE_SEARCH;
 }
 
-void DumpFileManager::PrintDumplog(const char* patch, const char* msg)
+void DumpFileManager::printDumplog(const char* patch, const char* msg)
 {
-	std::string logFileName = CString2String(dumpFilePath_) + patch;
+	std::string logFileName = cstring2String(dumpFilePath_) + patch;
 
 	FILE* fp;
 	fopen_s(&fp, logFileName.c_str(), "ab+");
@@ -107,10 +107,9 @@ void DumpFileManager::PrintDumplog(const char* patch, const char* msg)
 
 	fwrite(data, sizeof(char), strlen(data), fp);
 	fclose(fp);
-
 }
 
-void DumpFileManager::CheckDumpFileNumber(CString filePath) {
+void DumpFileManager::checkDumpFileNumber(CString filePath) {
 	std::vector<CString> allFiles;
 	std::map<CTime, CString> fileTimeMap;
 	CString path = filePath;
@@ -149,7 +148,7 @@ void DumpFileManager::CheckDumpFileNumber(CString filePath) {
 	}
 }
 
-bool DumpFileManager::CreateDumpFile(EXCEPTION_POINTERS* exception, LPCTSTR fileName) {
+bool DumpFileManager::createDumpFile(EXCEPTION_POINTERS* exception, LPCTSTR fileName) {
 	DWORD handleCount;
 	GetProcessHandleCount(GetCurrentProcess(), &handleCount);
 	PROCESS_MEMORY_COUNTERS pmc;
@@ -160,7 +159,7 @@ bool DumpFileManager::CreateDumpFile(EXCEPTION_POINTERS* exception, LPCTSTR file
 
 	char msg[128] = { 0 };
 	sprintf_s(msg, 128, "CrashMsg: WorkingSetSize:%d(kb),PagefileUsage:%d(kb),HandleCount:(%d)", memoryCount, pagefileUsage, handleCount);
-	PrintDumplog("DumpFile.log", msg);
+	printDumplog("DumpFile.log", msg);
 
 	MINIDUMP_CALLBACK_INFORMATION mci;
 	MINIDUMP_EXCEPTION_INFORMATION mdei;
@@ -190,7 +189,7 @@ bool DumpFileManager::CreateDumpFile(EXCEPTION_POINTERS* exception, LPCTSTR file
 	return false;
 }
 
-std::string DumpFileManager::CString2String(CString target) {
+std::string DumpFileManager::cstring2String(CString target) {
 #ifdef _UNICODE		
 	USES_CONVERSION;
 	std::string result(W2A(target));
@@ -202,7 +201,7 @@ std::string DumpFileManager::CString2String(CString target) {
 #endif	
 }
 
-CString DumpFileManager::String2CString(const char* target) {
+CString DumpFileManager::string2CString(const char* target) {
 #ifdef _UNICODE		
 	CString result;
 	int num = MultiByteToWideChar(0, 0, target, -1, NULL, 0);

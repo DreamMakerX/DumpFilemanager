@@ -2,22 +2,19 @@
 #include <iostream>
 #include "DumpFileManager.h"
 
-void DoSomething()
-{
-	int count = 0;
-	while (count < 10)
-	{
-		Sleep(1000);
-		std::cout << "get tick count: " << count + 1 << std::endl;
-		++count;
-	}
+void doSomething() {
+	std::cout << "doSomething start" << std::endl;
+
+	Sleep(3 * 1000);
+
 	throw "something error";
-	Sleep(10 * 1000);
-	std::cout << "DoSomething success"<< std::endl;
+
+	Sleep(3 * 1000);
+
+	std::cout << "doSomething success" << std::endl;
 }
-int main()
-{
-	StartDetectCrash();
-	DoSomething();
-	return 0;
+void main() {
+	startDetectCrash();
+
+	doSomething();
 }

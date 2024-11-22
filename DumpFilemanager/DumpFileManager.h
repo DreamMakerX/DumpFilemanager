@@ -13,19 +13,19 @@
 #include <afx.h>
 #include <string>
 
-enum DumpFileType{
+enum DumpFileType {
 	DumpFileType_Full = 0,	//full memory
 	DumpFileType_Normal,	//normal memory
 	DumpFileType_None,		//do not save
 };
 
-extern void StartDetectCrash(size_t type = DumpFileType_Full);
+extern void startDetectCrash(size_t type = DumpFileType_Full);
 
-class DumpFileManager{
+class DumpFileManager {
 public:
-	void SetDumpFileType(size_t type) { dumpFileType_ = type; }
+	void setDumpFileType(size_t type) { dumpFileType_ = type; }
 
-	void RunCrashHandler();
+	void runCrashHandler();
 
 	static DumpFileManager& getInstance() {
 		static DumpFileManager instance;
@@ -45,19 +45,19 @@ private:
 
 	DumpFileManager& operator=(DumpFileManager&&);
 
-	void DisableSetUnhandledExceptionFilter();
+	void disableSetUnhandledExceptionFilter();
 
-	static long WINAPI UnhandledExceptionFilterEx(struct _EXCEPTION_POINTERS* exception);
+	static long WINAPI unhandledExceptionFilterEx(struct _EXCEPTION_POINTERS* exception);
 
-	void PrintDumplog(const char* patch, const char* msg);
+	void printDumplog(const char* patch, const char* msg);
 
-	void CheckDumpFileNumber(CString filePath);
+	void checkDumpFileNumber(CString filePath);
 
-	bool CreateDumpFile(EXCEPTION_POINTERS* exception, LPCTSTR fileName);
+	bool createDumpFile(EXCEPTION_POINTERS* exception, LPCTSTR fileName);
 
-	static std::string CString2String(CString target);
+	static std::string cstring2String(CString target);
 
-	static CString String2CString(const char* str);
+	static CString string2CString(const char* str);
 
 	int					dumpFileType_;
 
