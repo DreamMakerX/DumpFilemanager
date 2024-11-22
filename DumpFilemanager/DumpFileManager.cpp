@@ -9,12 +9,19 @@
 #pragma comment(lib, "DbgHelp.lib") 
 #pragma comment(lib, "psapi.lib ") 
 
-DumpFileManager* _manager = nullptr;
+DumpFileManager& _manager = DumpFileManager::getInstance();
+
+void StartDetectCrash(size_t type)
+{
+	_manager.SetDumpFileType(type);
+	_manager.RunCrashHandler();
+}
 
 DumpFileManager::DumpFileManager() : dumpFileType_(DumpFileType_Full)
 {
 
 }
+
 DumpFileManager::~DumpFileManager()
 {
 
@@ -22,6 +29,9 @@ DumpFileManager::~DumpFileManager()
 
 void DumpFileManager::RunCrashHandler()
 {
+	if (!dumpFileName_.IsEmpty()) {// The automatic crash detection function has been activated
+		return;
+	}
 	int pos = 0;
 	CString path = _T("");
 	TCHAR temp[MAX_PATH] = { 0 };
@@ -38,6 +48,7 @@ void DumpFileManager::RunCrashHandler()
 
 	dumpFilePath_ = appPath;
 
+	// dump file path ==> DumpFile subfolders in the path where the application is located
 	dumpFilePath_ += _T("DumpFile\\");
 
 	if (!PathFileExists(dumpFilePath_))
@@ -45,7 +56,7 @@ void DumpFileManager::RunCrashHandler()
 		CreateDirectory(dumpFilePath_, NULL);
 	}
 
-	// DumpFile文件名 应用启动的时间戳
+	// dump file name ==> The time to activate the automatic crash detection function
 	SYSTEMTIME syt;
 	GetLocalTime(&syt);
 	dumpFileName_.Format(_T("%s%04d-%02d-%02d %02d-%02d-%02d.%03d.dmp"), dumpFilePath_, syt.wYear,
@@ -54,6 +65,7 @@ void DumpFileManager::RunCrashHandler()
 	SetUnhandledExceptionFilter(UnhandledExceptionFilterEx);
 	DisableSetUnhandledExceptionFilter();
 }
+
 void DumpFileManager::DisableSetUnhandledExceptionFilter()
 {
 	void* addr = (void*)GetProcAddress(LoadLibrary(_T("kernel32.dll")), "SetUnhandledExceptionFilter");
@@ -73,17 +85,18 @@ void DumpFileManager::DisableSetUnhandledExceptionFilter()
 		VirtualProtect(addr, size, dwOldFlag, &dwTempFlag);
 	}
 }
+
 long WINAPI DumpFileManager::UnhandledExceptionFilterEx(struct _EXCEPTION_POINTERS* exception)
 {
 	BOOL bRetVal = FALSE;
 
-	if (!exception || !_manager)
+	if (!exception)
 	{
 		return EXCEPTION_CONTINUE_SEARCH;
 	}
-	_manager->CheckDumpFileNumber(_manager->dumpFilePath_);
-	_manager->CreateDumpFile(exception, _manager->dumpFileName_);
-	TerminateProcess(GetCurrentProcess(), 0);//防止第二次抛出异常时卡住，在第一次保存dump文件后暂时做杀死进程的处理，该操作需要观察是否有负面影响
+	_manager.CheckDumpFileNumber(_manager.dumpFilePath_);
+	_manager.CreateDumpFile(exception, _manager.dumpFileName_);
+	TerminateProcess(GetCurrentProcess(), 0);
 	return EXCEPTION_CONTINUE_SEARCH;
 }
 
@@ -92,7 +105,7 @@ void DumpFileManager::PrintDumplog(const char* patch, const char* msg)
 	std::string logFileName = CString2String(dumpFilePath_) + patch;
 
 	FILE* fp;
-	fopen_s(&fp, logFileName.c_str(), "ab+");//打开文件
+	fopen_s(&fp, logFileName.c_str(), "ab+");
 	if (NULL == fp)
 	{
 		return;
@@ -108,6 +121,7 @@ void DumpFileManager::PrintDumplog(const char* patch, const char* msg)
 	fclose(fp);
 
 }
+
 void DumpFileManager::CheckDumpFileNumber(CString filePath)
 {
 	std::vector<CString> allFiles;
@@ -136,10 +150,10 @@ void DumpFileManager::CheckDumpFileNumber(CString filePath)
 		fileTimeMap[FileStatus.m_mtime] = path;
 	}
 
-	int	dumpCount = 5;//FullMemory模式下最多保存5个
+	int	dumpCount = 5;// FullMemory ==> Up to 5 dump files can be stored
 	if (DumpFileType_Normal == dumpFileType_)
 	{
-		dumpCount = 50;//NormalMemory模式下最多保存50个 
+		dumpCount = 50;// NormalMemory ==> Up to 50 dump files can be stored
 	}
 
 	int fileCount = fileTimeMap.size();
@@ -152,6 +166,7 @@ void DumpFileManager::CheckDumpFileNumber(CString filePath)
 		}
 	}
 }
+
 bool DumpFileManager::CreateDumpFile(EXCEPTION_POINTERS* exception, LPCTSTR fileName)
 {
 	DWORD handleCount;
@@ -163,7 +178,7 @@ bool DumpFileManager::CreateDumpFile(EXCEPTION_POINTERS* exception, LPCTSTR file
 	DWORD pagefileUsage = pmc.PagefileUsage / 1024;
 
 	char msg[128] = { 0 };
-	sprintf_s(msg, 128, "CrashMsg: WorkingSetSize:%d(kb),PagefileUsage:%d(kb),HandleCount:%d!", memoryCount, pagefileUsage, handleCount);
+	sprintf_s(msg, 128, "CrashMsg: WorkingSetSize:%d(kb),PagefileUsage:%d(kb),HandleCount:(%d)", memoryCount, pagefileUsage, handleCount);
 	PrintDumplog("DumpFile.log", msg);
 
 	MINIDUMP_CALLBACK_INFORMATION mci;
@@ -198,52 +213,28 @@ bool DumpFileManager::CreateDumpFile(EXCEPTION_POINTERS* exception, LPCTSTR file
 	return false;
 }
 
-void StartDetectCrash(size_t type)
+std::string DumpFileManager::CString2String(CString target)
 {
-	if (_manager)
-	{
-		StopDetectCrash();
-	}
-	_manager = new DumpFileManager;
-	_manager->SetDumpFileType(type);
-	_manager->RunCrashHandler();
-}
-void StopDetectCrash()
-{
-	if (_manager)
-	{
-		delete _manager;
-		_manager = nullptr;
-	}
-}
-
-std::string CString2String(CString target)
-{
-	//CString to std::string
 #ifdef _UNICODE		
-	//如果是unicode工程		
 	USES_CONVERSION;
 	std::string result(W2A(target));
 	return result;
 #else		
-	//如果是多字节工程 	
 	std::string result(target.GetBuffer());
 	target.ReleaseBuffer();
 	return result;
 #endif	
 }
-CString String2CString(const char* target)
+
+CString DumpFileManager::String2CString(const char* target)
 {
-	//std::string to CString
 #ifdef _UNICODE		
-	//如果是unicode工程	
 	CString result;
 	int num = MultiByteToWideChar(0, 0, target, -1, NULL, 0);
 	result.GetBufferSetLength(num + 1);
 	MultiByteToWideChar(0, 0, target, -1, result.GetBuffer(), num);
 	result.ReleaseBuffer();
 #else		
-	//如果是多字节工程	
 	CString result;
 	result.Format("%s", target);
 #endif 	

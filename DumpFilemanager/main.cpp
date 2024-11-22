@@ -19,6 +19,5 @@ int main()
 {
 	StartDetectCrash();
 	DoSomething();
-	StopDetectCrash();
 	return 0;
 }
